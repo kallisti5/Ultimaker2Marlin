@@ -214,8 +214,8 @@ void CardReader::startFileprint()
 
 void CardReader::openLogFile(const char* name)
 {
-  state |= SD_LOGGING;
   openFile(name, false);
+  state |= SD_LOGGING;
 }
 
 void CardReader::openFile(const char* name,bool read)
