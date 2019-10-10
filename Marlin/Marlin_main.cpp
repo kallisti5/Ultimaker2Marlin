@@ -3655,15 +3655,8 @@ bool changeExtruder(uint8_t nextExtruder, bool moveZ)
         return false;
     }
 
-    if (!(position_state & (KNOWNPOS_X | KNOWNPOS_Y)))
-    {
-        // head not homed
-        active_extruder = nextExtruder;
-        return false;
-    }
-
-    // finish planned moves
-    st_synchronize();
+    // home head if necessary
+    CommandBuffer::init_head_position();
 
     if (printing_state == PRINT_STATE_ABORT)
     {

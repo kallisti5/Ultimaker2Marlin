@@ -7,6 +7,7 @@ class CommandBuffer
 {
   public:
 
+    static void init_head_position();
     static void homeHead();
     static void homeBed();
     static void homeAll();

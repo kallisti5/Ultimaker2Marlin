@@ -237,7 +237,8 @@ void lcd_lib_update_screen()
                 {
                     // reduce contrast
                     lcd_lib_contrast(min(lcd_sleep_contrast, lcd_contrast));
-                } else
+                }
+                else
                 {
                     // switch LCD off
                     i2c_start();
@@ -249,9 +250,11 @@ void lcd_lib_update_screen()
                 if (!led_sleep_glow)
                 {
                     // screen saver is active - switch off the encoder led
-                    i2c_led_write(2, 0);//PWM0
-                    i2c_led_write(3, 0);//PWM1
-                    i2c_led_write(4, 0);//PWM2
+                    // i2c_led_write(2, 0);//PWM0
+                    // i2c_led_write(3, 0);//PWM1
+                    // i2c_led_write(4, 0);//PWM2
+                    lcd_lib_led_color(0,0,0);
+                    led_update();
                 }
             }
             if (led_sleep_glow && !(sleep_state & SLEEP_LED_OFF))
@@ -271,7 +274,8 @@ void lcd_lib_update_screen()
             {
                 // increase contrast back to normal
                 lcd_lib_contrast(lcd_contrast);
-            } else
+            }
+            else
             {
                 // switch LCD on
                 i2c_start();

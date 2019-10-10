@@ -385,6 +385,18 @@ void CommandBuffer::move2SafeYPos()
 }
 #endif
 
+void CommandBuffer::init_head_position()
+{
+    st_synchronize();
+    if (!(position_state & (KNOWNPOS_X | KNOWNPOS_Y)))
+    {
+        // home head
+        CommandBuffer::homeHead();
+        cmd_synchronize();
+        st_synchronize();
+    }
+}
+
 void CommandBuffer::homeHead()
 {
     enquecommand_P(PSTR("G28 X0 Y0"));

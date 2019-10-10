@@ -298,18 +298,6 @@ void lcd_menu_extruderoffset()
 
 //////////////////
 
-static void init_head_position()
-{
-    st_synchronize();
-    if (!(position_state & (KNOWNPOS_X | KNOWNPOS_Y)))
-    {
-        // home head
-        CommandBuffer::homeHead();
-        cmd_synchronize();
-        st_synchronize();
-    }
-}
-
 static void lcd_dockmove_init()
 {
     // save current variables
@@ -318,7 +306,7 @@ static void lcd_dockmove_init()
     OLD_ACCEL = acceleration;
     OLD_JERK = max_xy_jerk;
     // home head if necessary
-    init_head_position();
+    CommandBuffer::init_head_position();
     // move to dock position
     CommandBuffer::move2dock(false);
     acceleration = 250;
@@ -1291,7 +1279,7 @@ void switch_extruder(uint8_t newExtruder, bool moveZ)
     if (newExtruder != active_extruder)
     {
         // home head if necessary
-        init_head_position();
+        CommandBuffer::init_head_position();
         // tool change
         changeExtruder(newExtruder, moveZ);
     }

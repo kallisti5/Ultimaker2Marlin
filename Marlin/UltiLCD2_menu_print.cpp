@@ -81,7 +81,7 @@ void abortPrint(bool bQuickstop)
 #if EXTRUDERS > 1
     if (!bQuickstop && active_extruder)
     {
-        switch_extruder(0, true);
+        switch_extruder(0, position_state & KNOWNPOS_Z);
     }
 #endif // EXTRUDERS
 
@@ -256,7 +256,7 @@ void doStartPrint()
         if (active_extruder != e)
         {
             // switch active extruder
-            switch_extruder(e, true);
+            switch_extruder(e, position_state & KNOWNPOS_Z);
         }
         else
         {
