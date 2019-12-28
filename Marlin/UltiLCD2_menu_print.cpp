@@ -159,6 +159,7 @@ void abortPrint(bool bQuickstop)
     lifetime_stats_print_end();
 
     printing_state = PRINT_STATE_NORMAL;
+
 #if FAN2_PIN != LED_PIN
     if (led_mode == LED_MODE_WHILE_PRINTING)
         analogWrite(LED_PIN, 0);
@@ -996,13 +997,18 @@ static void lcd_menu_print_material_warning()
 
 static void lcd_menu_doabort()
 {
-    LED_GLOW
     if (printing_state == PRINT_STATE_ABORT)
     {
+        LED_GLOW
         lcd_lib_clear();
         lcd_lib_draw_string_centerP(20, PSTR("Aborting..."));
 		lcd_lib_draw_gfx(LCD_GFX_WIDTH/2 - 4, 32, standbyGfx);
         lcd_lib_update_screen();
+    }
+    else if (sleep_state & SLEEP_SERIAL_SCREEN)
+    {
+        // still serial communication
+        menu.return_to_menu(lcd_menu_printing_tg, false);
     }
     else
     {
@@ -1013,14 +1019,24 @@ static void lcd_menu_doabort()
 
 static void set_abort_state()
 {
-    printing_state = PRINT_STATE_ABORT;
+
     postMenuCheck = NULL;
     sleep_state &= ~SLEEP_LED_OFF;
-    // force end of print retraction
-    if (IS_SD_PRINTING && !card.pause())
+
+    if (IS_SD_PRINTING)
     {
-        primed |= (EXTRUDER_PRIMED << active_extruder);
-        primed |= ENDOFPRINT_RETRACT;
+        printing_state = PRINT_STATE_ABORT;
+        if (!card.pause())
+        {
+            // force end of print retraction
+            primed |= (EXTRUDER_PRIMED << active_extruder);
+            primed |= ENDOFPRINT_RETRACT;
+        }
+    }
+    else if (HAS_SERIAL_CMD)
+    {
+        // send signal to printing host
+        serial_action_P(PSTR("cancel"));
     }
 //    menu.return_to_main();
 }
@@ -1305,7 +1321,7 @@ void lcd_menu_print_tune()
     if (ui_mode & UI_MODE_EXPERT)
     {
         ++len; // sleep timer
-        if (card.sdprinting() && card.pause())
+        if (card.pause())
         {
             ++len; // move material
         }
@@ -1364,7 +1380,7 @@ void lcd_menu_print_tune()
         else if (IS_SELECTED_SCROLL(index++))
             LCD_EDIT_SETTING(led_brightness_level, "Brightness", "%", 0, 100);
 #endif
-        else if ((ui_mode & UI_MODE_EXPERT) && card.sdprinting() && card.pause() && IS_SELECTED_SCROLL(index++))
+        else if ((ui_mode & UI_MODE_EXPERT) && card.pause() && IS_SELECTED_SCROLL(index++))
             menu.add_menu(menu_t(lcd_init_extrude, lcd_menu_expert_extrude, NULL)); // Move material
         else if ((ui_mode & UI_MODE_EXPERT) && IS_SELECTED_SCROLL(index++))
             menu.add_menu(menu_t(lcd_menu_sleeptimer));
@@ -1425,7 +1441,6 @@ void lcd_print_pause()
     if (!card.pause())
     {
         card.pauseSDPrint();
-        serial_action_P(PSTR("pause"));
 
         // move z up according to the current height - but minimum to z=70mm (above the gantry height)
         uint16_t zdiff = 0;
@@ -1471,10 +1486,12 @@ void lcd_print_abort()
 
 static void doResume()
 {
-    primed |= (EXTRUDER_PRIMED << active_extruder);
-    primed |= ENDOFPRINT_RETRACT;
+    if (IS_SD_PRINTING)
+    {
+        primed |= (EXTRUDER_PRIMED << active_extruder);
+        primed |= ENDOFPRINT_RETRACT;
+    }
     card.resumePrinting();
-    serial_action_P(PSTR("resume"));
     menu.return_to_previous();
 }
 
@@ -1512,7 +1529,7 @@ static const menu_t & get_pause_menuoption(uint8_t nr, menu_t &opt)
     {
         opt.setData(MENU_NORMAL, lcd_show_pause_menu);
     }
-    else if (IS_SD_PRINTING && (nr == menu_index++))
+    else if (nr == menu_index++)
     {
         opt.setData(MENU_NORMAL, lcd_print_abort);
     }
@@ -1548,7 +1565,7 @@ static void drawPauseSubmenu(uint8_t nr, uint8_t &flags)
             lcd_lib_draw_gfx(LCD_CHAR_MARGIN_LEFT+26, LCD_LINE_HEIGHT*3+2, pauseGfx);
         }
     }
-    else if (IS_SD_PRINTING && (nr == index++))
+    else if (nr == index++)
     {
         LCDMenu::drawMenuString_P(LCD_GFX_WIDTH/2 + LCD_CHAR_MARGIN_LEFT+3
                                 , LCD_LINE_HEIGHT
@@ -1610,7 +1627,7 @@ void lcd_menu_print_pause()
     lcd_lib_draw_vline(64, 5, 46);
     lcd_lib_draw_hline(3, 124, 50);
 
-    uint8_t len = IS_SD_PRINTING ? 4 : 3;
+    uint8_t len = 4;
     menu.process_submenu(get_pause_menuoption, len);
 
     for (uint8_t index=0; index<len; ++index)
@@ -1627,7 +1644,7 @@ static const menu_t & get_resume_menuoption(uint8_t nr, menu_t &opt)
     {
         opt.setData(MENU_NORMAL, lcd_print_resume);
     }
-    else if (IS_SD_PRINTING && (nr == menu_index++))
+    else if (nr == menu_index++)
     {
         opt.setData(MENU_NORMAL, lcd_print_change_material);
     }
@@ -1635,7 +1652,7 @@ static const menu_t & get_resume_menuoption(uint8_t nr, menu_t &opt)
     {
         opt.setData(MENU_NORMAL, lcd_print_tune);
     }
-    else if (IS_SD_PRINTING && (nr == menu_index++))
+    else if (nr == menu_index++)
     {
         opt.setData(MENU_NORMAL, lcd_print_abort);
     }
@@ -1663,7 +1680,7 @@ static void drawResumeSubmenu(uint8_t nr, uint8_t &flags)
             lcd_lib_draw_gfx(LCD_CHAR_MARGIN_LEFT+26, LCD_LINE_HEIGHT*3+2, startGfx);
         }
     }
-    else if (IS_SD_PRINTING && (nr == index++))
+    else if (nr == index++)
     {
         LCDMenu::drawMenuBox(LCD_GFX_WIDTH/2 + LCD_CHAR_MARGIN_LEFT+3
                            , LCD_LINE_HEIGHT
@@ -1701,7 +1718,7 @@ static void drawResumeSubmenu(uint8_t nr, uint8_t &flags)
             lcd_lib_draw_gfx(2*LCD_CHAR_SPACING, BOTTOM_MENU_YPOS, menuGfx);
         }
     }
-    else if (IS_SD_PRINTING && (nr == index++))
+    else if (nr == index++)
     {
         LCDMenu::drawMenuBox(LCD_GFX_WIDTH/2 + LCD_CHAR_MARGIN_LEFT*2
                                 , BOTTOM_MENU_YPOS
@@ -1727,7 +1744,7 @@ void lcd_menu_print_resume()
     lcd_lib_draw_vline(64, 5, 46);
     lcd_lib_draw_hline(3, 124, 50);
 
-    uint8_t len = IS_SD_PRINTING ? 4 : 2;
+    uint8_t len = 4;
 
     menu.process_submenu(get_resume_menuoption, len);
 

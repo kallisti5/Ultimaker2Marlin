@@ -671,8 +671,13 @@ static void checkToolchange(const char *cmd)
  * Copy a command directly into the main command buffer, from RAM.
  * Returns true if successfully adds the command
  */
-static bool insertcommand(const char* cmd, bool isSerialCmd) {
-  if (*cmd == ';' || buflen >= BUFSIZE) return false;
+static bool insertcommand(const char* cmd, bool isSerialCmd)
+{
+  if (*cmd == ';' || buflen >= BUFSIZE)
+  {
+      return false;
+  }
+
   strcpy(cmdbuffer[bufindw], cmd);
   commit_command(isSerialCmd);
 #if (EXTRUDERS > 1) && defined(FWRETRACT)
@@ -911,7 +916,7 @@ inline void get_sdcard_commands()
 
 static void get_command()
 {
-    if (printing_state != PRINT_STATE_ABORT)
+    if (printing_state < PRINT_STATE_END)
     {
           get_serial_commands();
         #ifdef SDSUPPORT
@@ -1523,7 +1528,7 @@ void process_command(const char *strCmd, bool sendAck)
       printing_state = PRINT_STATE_WAIT_USER;
       LCD_MESSAGEPGM(MSG_USERWAIT);
 
-//      serial_action_P(PSTR("pause"));
+      serial_action_P(PSTR("paused"));
 
       codenum = 0;
       if(code_seen(strCmd, 'P')) codenum = code_value(); // milliseconds to wait
@@ -1545,7 +1550,7 @@ void process_command(const char *strCmd, bool sendAck)
           idle();
         }
       }
-//      serial_action_P(PSTR("resume"));
+      serial_action_P(PSTR("resumed"));
       LCD_MESSAGEPGM(MSG_RESUMING);
     }
     break;
@@ -1558,11 +1563,13 @@ void process_command(const char *strCmd, bool sendAck)
           break;
 
         card.pauseSDPrint();
+        serial_action_P(PSTR("paused"));
         while(card.pause())
         {
           idle();
         }
         plan_set_e_position(current_position[E_AXIS], active_extruder, true);
+        serial_action_P(PSTR("resumed"));
     }
     break;
 #endif
@@ -2679,6 +2686,7 @@ void process_command(const char *strCmd, bool sendAck)
           break;
 
         card.pauseSDPrint();
+        serial_action_P(PSTR("paused"));
 
         st_synchronize();
         float target[NUM_AXIS];
@@ -2774,6 +2782,8 @@ void process_command(const char *strCmd, bool sendAck)
           memcpy(current_position, target, sizeof(current_position));
           memcpy(destination, current_position, sizeof(destination));
         }
+
+        serial_action_P(PSTR("resumed"));
     }
     break;
 
@@ -3405,16 +3415,18 @@ void idle()
     // detect serial communication
     if (commands_queued() && serialCmd)
     {
-      sleep_state |= SLEEP_SERIAL_CMD;
-      lastSerialCommandTime = millis();
+        sleep_state |= SLEEP_SERIAL_CMD;
+        lastSerialCommandTime = millis();
     }
     else if ((lastSerialCommandTime>0) && ((millis() - lastSerialCommandTime) < SERIAL_CONTROL_TIMEOUT))
     {
         sleep_state |= SLEEP_SERIAL_CMD;
     }
-    else
+    else if (HAS_SERIAL_CMD)
     {
-      sleep_state &= ~SLEEP_SERIAL_CMD;
+        // reset printing state
+        sleep_state &= ~SLEEP_SERIAL_CMD;
+        printing_state = PRINT_STATE_NORMAL;
     }
 }
 

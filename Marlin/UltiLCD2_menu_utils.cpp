@@ -16,6 +16,23 @@ LCDMenu menu;
 
 static int16_t lastEncoderPos = 0;
 
+static void init_menu_switch(bool beep)
+{
+    if (last_user_interaction) last_user_interaction = millis();
+    minProgress = 0;
+    LED_NORMAL
+    if (beep)
+    {
+        lcd_lib_keyclick();
+    }
+#if FAN2_PIN != LED_PIN
+    if (!(sleep_state & SLEEP_LED_OFF) && (led_mode == LED_MODE_ALWAYS_ON))
+    {
+        analogWrite(LED_PIN, 255 * int(led_brightness_level) / 100);
+    }
+#endif
+}
+
 // --------------------------------------------------------------------------
 // menu stack handling
 // --------------------------------------------------------------------------
@@ -36,20 +53,25 @@ void LCDMenu::processEvents()
     }
 }
 
-void LCDMenu::init_menu_switch(bool beep)
+void LCDMenu::enterMenu()
 {
-    if (last_user_interaction) last_user_interaction = millis();
-    minProgress = 0;
-    LED_NORMAL
-    if (beep)
+    lastEncoderPos = lcd_lib_encoder_pos = menuStack[currentIndex].encoderPos;
+    lcd_lib_button_pressed = false;
+    if (menuStack[currentIndex].initMenuFunc)
     {
-        lcd_lib_keyclick();
+        menuStack[currentIndex].initMenuFunc();
     }
-#if FAN2_PIN != LED_PIN
-    if (!(sleep_state & SLEEP_LED_OFF) && (led_mode == LED_MODE_ALWAYS_ON))
-        analogWrite(LED_PIN, 255 * int(led_brightness_level) / 100);
-#endif
 }
+
+void LCDMenu::exitMenu()
+{
+    // post processing
+    if (menuStack[currentIndex].postMenuFunc)
+    {
+        menuStack[currentIndex].postMenuFunc();
+    }
+}
+
 
 void LCDMenu::init_menu(menu_t mainMenu, bool beep)
 {
@@ -76,20 +98,11 @@ void LCDMenu::replace_menu(menu_t nextMenu, bool beep)
 {
     // post processing
     reset_submenu();
-    if (menuStack[currentIndex].postMenuFunc)
-    {
-        menuStack[currentIndex].postMenuFunc();
-    }
+    exitMenu();
     // switch to new menu
     init_menu_switch(beep);
     menuStack[currentIndex] = nextMenu;
-    lastEncoderPos = lcd_lib_encoder_pos = nextMenu.encoderPos;
-    lcd_lib_button_pressed = false;
-    // menu initialization
-    if (nextMenu.initMenuFunc)
-    {
-        nextMenu.initMenuFunc();
-    }
+    enterMenu();
 }
 
 bool LCDMenu::return_to_previous(bool beep)
@@ -99,46 +112,31 @@ bool LCDMenu::return_to_previous(bool beep)
     {
         // post processing
         reset_submenu();
-        if (menuStack[currentIndex].postMenuFunc)
-        {
-            menuStack[currentIndex].postMenuFunc();
-        }
         init_menu_switch(beep);
+        exitMenu();
         // switch back to previous menu
         --currentIndex;
-        lastEncoderPos = lcd_lib_encoder_pos = menuStack[currentIndex].encoderPos;
-        lcd_lib_button_pressed = false;
-        if (menuStack[currentIndex].initMenuFunc)
-        {
-            menuStack[currentIndex].initMenuFunc();
-        }
+        enterMenu();
         return true;
     }
     return false;
 }
 
-void LCDMenu::return_to_main(bool beep)
+void LCDMenu::return_to_menu(menuFunc_t func, bool beep)
 {
-    if (currentIndex>0)
+    if ((currentIndex>0) && (menuStack[currentIndex].processMenuFunc != func))
     {
         reset_submenu();
         init_menu_switch(beep);
-        while (currentIndex>0)
+        while ((currentIndex>0) && (menuStack[currentIndex].processMenuFunc != func))
         {
             // post processing
-            if (menuStack[currentIndex].postMenuFunc)
-            {
-                menuStack[currentIndex].postMenuFunc();
-            }
+            exitMenu();
             // switch back to previous menu
             --currentIndex;
         }
-        lastEncoderPos = lcd_lib_encoder_pos = menuStack[currentIndex].encoderPos;
-        lcd_lib_button_pressed = false;
-        if (menuStack[currentIndex].initMenuFunc)
-        {
-            menuStack[currentIndex].initMenuFunc();
-        }
+        // initialize the new menu
+        enterMenu();
     }
     LED_NORMAL
 }
@@ -151,10 +149,7 @@ void LCDMenu::removeMenu(menuFunc_t func)
         while (currentIndex>0)
         {
             // post processing
-            if (menuStack[currentIndex].postMenuFunc)
-            {
-                menuStack[currentIndex].postMenuFunc();
-            }
+            exitMenu();
             // switch back to previous menu
             --currentIndex;
             // abort loop if the requested menu is removed
@@ -163,12 +158,7 @@ void LCDMenu::removeMenu(menuFunc_t func)
                 break;
             }
         }
-        lastEncoderPos = lcd_lib_encoder_pos = menuStack[currentIndex].encoderPos;
-        lcd_lib_button_pressed = false;
-        if (menuStack[currentIndex].initMenuFunc)
-        {
-            menuStack[currentIndex].initMenuFunc();
-        }
+        enterMenu();
     }
     LED_NORMAL
 }
