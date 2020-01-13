@@ -1187,7 +1187,7 @@ static void tune_item_callback(uint8_t nr, uint8_t offsetY, uint8_t flags)
     else if (index++ == nr)
         strcpy_P(buffer, PSTR("LED Brightness"));
 #endif
-    else if ((ui_mode & UI_MODE_EXPERT) && card.sdprinting() && card.pause() && (index++ == nr))
+    else if ((ui_mode & UI_MODE_EXPERT) && card.pause() && (index++ == nr))
         strcpy_P(buffer, PSTR("Move material"));
     else if ((ui_mode & UI_MODE_EXPERT) && (index++ == nr))
         strcpy_P(buffer, PSTR("Sleep timer"));
