@@ -1489,4 +1489,10 @@
 	#define MSG_ERR_LONG_EXTRUDE_STOP " liian pitka pursotus estetty"
 
 #endif
+
+// Serial Console Messages (do not translate those!)
+#define MSG_BUSY_PROCESSING                 "busy: processing"
+#define MSG_BUSY_PAUSED_FOR_USER            "busy: paused for user"
+#define MSG_BUSY_PAUSED_FOR_INPUT           "busy: paused for input"
+
 #endif // ifndef LANGUAGE_H

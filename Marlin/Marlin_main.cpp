@@ -90,6 +90,7 @@
 // M106 - Fan on
 // M107 - Fan off
 // M109 - Wait for extruder current temp to reach target temp.
+// M113 - Get or set the timeout interval for Host Keepalive "busy" messages. (Requires HOST_KEEPALIVE_FEATURE)
 // M114 - Display current position
 
 //Custom M Codes
@@ -215,6 +216,11 @@ bool position_error;
   float retract_recover_length[EXTRUDERS] = ARRAY_BY_EXTRUDERS(0.0f, 0.0f, 0.0f);
   float retract_recover_feedrate[EXTRUDERS];
 #endif
+
+#ifdef HOST_KEEPALIVE_FEATURE
+  MarlinBusyState busy_state = NOT_BUSY;
+  uint8_t host_keepalive_interval = DEFAULT_KEEPALIVE_INTERVAL;
+#endif // HOST_KEEPALIVE_FEATURE
 
 uint8_t printing_state;
 
@@ -1224,6 +1230,8 @@ static char * truncate_checksum(char *str)
 
 void process_command(const char *strCmd, bool sendAck)
 {
+  KEEPALIVE_STATE(IN_HANDLER);
+
   unsigned long codenum; //throw away variable
 
   if ((printing_state != PRINT_STATE_RECOVER) && (printing_state != PRINT_STATE_START) && (printing_state < PRINT_STATE_TOOLCHANGE))
@@ -1536,6 +1544,9 @@ void process_command(const char *strCmd, bool sendAck)
 
       st_synchronize();
       previous_millis_cmd = millis();
+
+      KEEPALIVE_STATE(PAUSED_FOR_USER);
+
       if (codenum > 0)
       {
         codenum += millis();  // keep track of when we started waiting
@@ -1564,6 +1575,9 @@ void process_command(const char *strCmd, bool sendAck)
 
         card.pauseSDPrint();
         serial_action_P(PSTR("paused"));
+
+        KEEPALIVE_STATE(PAUSED_FOR_USER);
+
         while(card.pause())
         {
           idle();
@@ -1823,6 +1837,10 @@ void process_command(const char *strCmd, bool sendAck)
       setWatch();
       codenum = millis();
 
+      #ifndef BUSY_WHILE_HEATING
+        KEEPALIVE_STATE(NOT_BUSY);
+      #endif
+
       #ifdef TEMP_RESIDENCY_TIME
         long residencyStart = -1;
         /* continue to loop until we have reached the target temp
@@ -1893,6 +1911,10 @@ void process_command(const char *strCmd, bool sendAck)
         // set targeted hotend for serial output
         tmp_extruder = active_extruder;
         #endif // EXTRUDERS
+
+        #ifndef BUSY_WHILE_HEATING
+          KEEPALIVE_STATE(NOT_BUSY);
+        #endif
 
         while(current_temperature_bed < degTargetBed() - TEMP_WINDOW)
         {
@@ -2072,6 +2094,18 @@ void process_command(const char *strCmd, bool sendAck)
         }
       }
       plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], active_extruder, true);
+      break;
+    case 113: // M113 Get or set Host Keepalive interval (0 to disable)
+      if(code_seen(strCmd, 'S'))
+      {
+        host_keepalive_interval = constrain(code_value_long(), 0, 60);
+      }
+      else
+      {
+        SERIAL_ECHO_START;
+        SERIAL_PROTOCOLPGM("M113 S");
+        SERIAL_PROTOCOLLN((unsigned long)host_keepalive_interval);
+      }
       break;
     case 114: // M114
       SERIAL_PROTOCOLPGM("X:");
@@ -2498,6 +2532,10 @@ void process_command(const char *strCmd, bool sendAck)
           temp=70;
       if (code_seen(strCmd, 'S')) temp=code_value();
       if (code_seen(strCmd, 'C')) c=code_value();
+
+    #ifndef BUSY_WHILE_HEATING
+      KEEPALIVE_STATE(NOT_BUSY);
+    #endif
       PID_autotune(temp, e, c);
     }
     break;
@@ -2639,6 +2677,8 @@ void process_command(const char *strCmd, bool sendAck)
     #endif
         delay(100);
         LCD_ALERTMESSAGEPGM(MSG_FILAMENTCHANGE);
+        KEEPALIVE_STATE(PAUSED_FOR_USER);
+
         uint8_t cnt=0;
         while(!lcd_clicked())
         {
@@ -2744,6 +2784,8 @@ void process_command(const char *strCmd, bool sendAck)
     #if EXTRUDERS > 1
         last_extruder = 0xFF;
     #endif
+        KEEPALIVE_STATE(PAUSED_FOR_USER);
+
         while(card.pause())
         {
           idle();
@@ -3406,6 +3448,10 @@ void idle()
 {
     static unsigned long lastSerialCommandTime = 0;
 
+  #ifdef HOST_KEEPALIVE_FEATURE
+    host_keepalive();
+  #endif // HOST_KEEPALIVE_FEATURE
+
     manage_heater();
     manage_inactivity();
 
@@ -3495,6 +3541,39 @@ static void manage_inactivity()
   #endif
   check_axes_activity();
 }
+
+
+#ifdef HOST_KEEPALIVE_FEATURE
+
+  /**
+   * Output a "busy" message at regular intervals
+   * while the machine is not accepting commands.
+   */
+  void host_keepalive() {
+    const unsigned long ms = millis();
+    static unsigned long next_busy_signal_ms = 0;
+    if (host_keepalive_interval && busy_state != NOT_BUSY)
+    {
+      if (PENDING(ms, next_busy_signal_ms)) return;
+      switch (busy_state) {
+        case IN_HANDLER:
+        case IN_PROCESS:
+          SERIAL_ECHO_MSG(MSG_BUSY_PROCESSING);
+          break;
+        case PAUSED_FOR_USER:
+          SERIAL_ECHO_MSG(MSG_BUSY_PAUSED_FOR_USER);
+          break;
+        case PAUSED_FOR_INPUT:
+          SERIAL_ECHO_MSG(MSG_BUSY_PAUSED_FOR_INPUT);
+          break;
+        default:
+          break;
+      }
+    }
+    next_busy_signal_ms = ms + host_keepalive_interval * 1000UL;
+  }
+
+#endif // HOST_KEEPALIVE_FEATURE
 
 void kill()
 {

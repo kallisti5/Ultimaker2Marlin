@@ -24,4 +24,18 @@
 
 #define COUNT(a) (sizeof(a)/sizeof(*a))
 
+template<typename T>
+class restorer {
+  T& ref_;
+  T  val_;
+public:
+  restorer(T& perm) : ref_(perm), val_(perm) {}
+  restorer(T& perm, T temp_val) : ref_(perm), val_(perm) { perm = temp_val; }
+  ~restorer() { restore(); }
+  inline void restore() { ref_ = val_; }
+};
+
+#define REMEMBER(N,X,V...) const restorer<typeof(X)> restorer_##N(X, ##V)
+#define RESTORE(N) restorer_##N.restore()
+
 #endif //__MACROS_H

@@ -133,6 +133,7 @@ void CommandBuffer::deleteScript(struct t_cmdline *script)
 
 uint8_t CommandBuffer::processScript(struct t_cmdline *script)
 {
+    KEEPALIVE_STATE(IN_PROCESS);
     uint8_t cmdCount(0);
     while (script)
     {
@@ -414,6 +415,7 @@ void CommandBuffer::homeAll()
 
 void CommandBuffer::dwell(const unsigned long m)
 {
+    KEEPALIVE_STATE(IN_PROCESS);
     unsigned long target_millis = millis() + m;
     while(millis() < target_millis )
     {

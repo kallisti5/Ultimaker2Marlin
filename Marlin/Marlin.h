@@ -21,6 +21,7 @@
 #include "fastio.h"
 #include "Configuration.h"
 #include "pins.h"
+#include "macros.h"
 
 #ifndef AT90USB
 #define  HardwareSerial_h // trick to disable the standard HWserial
@@ -77,6 +78,13 @@ const char echomagic[] PROGMEM ="echo:";
 #define SERIAL_ECHOLNPGM(x) SERIAL_PROTOCOLLNPGM(x)
 
 #define SERIAL_ECHOPAIR(name,value) (serial_echopair_P(PSTR(name),(value)))
+#define SERIAL_ECHOLNPAIR(name,value) do{(serial_echopair_P(PSTR(name),(value)));SERIAL_EOL;} while(0)
+
+#define SERIAL_ECHO_MSG(S)          do{ SERIAL_ECHO_START; SERIAL_ECHOLNPGM(S); }while(0)
+#define SERIAL_ERROR_MSG(S)         do{ SERIAL_ERROR_START; SERIAL_ECHOLNPGM(S); }while(0)
+
+#define PENDING(NOW,SOON) ((int32_t)(NOW-(SOON))<0)
+#define ELAPSED(NOW,SOON) (!PENDING(NOW,SOON))
 
 
 void serial_echopair_P(const char *s_P, float v);
@@ -283,6 +291,29 @@ extern uint8_t menu_extruder;
   # define ARRAY_BY_EXTRUDERS(v1, v2, v3) { v1, v2 }
 #else
   # define ARRAY_BY_EXTRUDERS(v1, v2, v3) { v1 }
+#endif
+
+#ifdef HOST_KEEPALIVE_FEATURE
+  /**
+   * States for managing Marlin and host communication
+   * Marlin sends messages if blocked or busy
+   */
+  enum MarlinBusyState {
+    NOT_BUSY,           // Not in a handler
+    IN_HANDLER,         // Processing a GCode
+    IN_PROCESS,         // Known to be blocking command input (as in G29)
+    PAUSED_FOR_USER,    // Blocking pending any input
+    PAUSED_FOR_INPUT    // Blocking pending text input (concept)
+  };
+
+  extern MarlinBusyState busy_state;
+  extern uint8_t host_keepalive_interval;
+
+  void host_keepalive();
+
+  #define KEEPALIVE_STATE(N) REMEMBER(_KA_, busy_state, N)
+#else
+  #define KEEPALIVE_STATE(N) NOOP
 #endif
 
 extern "C"{
