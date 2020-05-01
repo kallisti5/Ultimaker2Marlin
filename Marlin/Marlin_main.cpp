@@ -2786,8 +2786,18 @@ void process_command(const char *strCmd, bool sendAck)
     #endif
         KEEPALIVE_STATE(PAUSED_FOR_USER);
 
+        codenum = millis();
+
         while(card.pause())
         {
+          if( (millis() - codenum) > 2000UL )
+          { //Print Temp Reading every 2 seconds while pausing
+            #if (TEMP_SENSOR_0 != 0) || (TEMP_SENSOR_BED != 0) || defined(HEATER_0_USES_MAX6675)
+              print_heaterstates();
+              SERIAL_EOL;
+            #endif
+            codenum = millis();
+          }
           idle();
           if (printing_state == PRINT_STATE_ABORT)
           {
