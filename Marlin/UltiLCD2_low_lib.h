@@ -107,7 +107,7 @@ size_t strlcpy(char* dst, const char* src, size_t n);
 #define MILLISECONDS_PER_MINUTE (MILLISECONDS_PER_SECOND*60UL)
 
 #define LED_NORMAL {if (sleep_state & SLEEP_LCD_DIMMED) { lcd_lib_led_color(0,0,0); } else { lcd_lib_led_color(40,40,54); } led_update();}
-#define LED_GLOW   {lcd_lib_led_color(8 + led_glow, 8 + led_glow, 32 + led_glow); led_update();}
+#define LED_GLOW   {if (sleep_state & SLEEP_LCD_DIMMED) { lcd_lib_led_color(0,0,0); } else { lcd_lib_led_color(8 + led_glow, 8 + led_glow, 32 + led_glow); } led_update();}
 #define LED_GLOW_ERROR {lcd_lib_led_color(led_glow,128-led_glow,led_glow); led_update();}
 
 #endif//ULTI_LCD2_LOW_LIB_H
