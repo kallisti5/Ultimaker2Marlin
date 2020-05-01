@@ -543,7 +543,7 @@ static void drawBabystepSubmenu(uint8_t nr, uint8_t &flags)
         // babystep x
         if (flags & (MENU_SELECTED | MENU_ACTIVE))
         {
-            lcd_lib_draw_string_leftP(5, PSTR("Babystep X axis"));
+            lcd_lib_draw_string_leftP(5, PSTR("adjust X axis"));
             flags |= MENU_STATUSLINE;
         }
         if (flags & MENU_ACTIVE)
@@ -567,7 +567,7 @@ static void drawBabystepSubmenu(uint8_t nr, uint8_t &flags)
         // babystep y
         if (flags & (MENU_SELECTED | MENU_ACTIVE))
         {
-            lcd_lib_draw_string_leftP(5, PSTR("Babystep Y axis"));
+            lcd_lib_draw_string_leftP(5, PSTR("adjust Y axis"));
             flags |= MENU_STATUSLINE;
         }
         if (flags & MENU_ACTIVE)
@@ -589,7 +589,7 @@ static void drawBabystepSubmenu(uint8_t nr, uint8_t &flags)
         // babystep z
         if (flags & (MENU_SELECTED | MENU_ACTIVE))
         {
-            lcd_lib_draw_string_leftP(5, PSTR("Babystep Z axis"));
+            lcd_lib_draw_string_leftP(5, PSTR("adjust Z axis"));
             flags |= MENU_STATUSLINE;
         }
         if (flags & MENU_ACTIVE)
@@ -650,7 +650,7 @@ static void lcd_menu_babystepping()
     }
     if (!(flags & MENU_STATUSLINE))
     {
-        lcd_lib_draw_string_leftP(5, PSTR("Babystepping"));
+        lcd_lib_draw_string_leftP(5, PSTR("Adjust position"));
     }
 
     lcd_lib_update_screen();
@@ -1028,7 +1028,7 @@ static void drawPrintSubmenu (uint8_t nr, uint8_t &flags)
         {
             if (flags & MENU_SELECTED)
             {
-                lcd_lib_draw_string_leftP(5, PSTR("Babystepping"));
+                lcd_lib_draw_string_leftP(5, PSTR("Tune position"));
                 flags |= MENU_STATUSLINE;
             }
 

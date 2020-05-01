@@ -270,43 +270,47 @@ void enable_endstops(bool check)
 //  step_events_completed reaches block->decelerate_after after which it decelerates until the trapezoid generator is reset.
 //  The slope of acceleration is calculated using v = u + at where t is the accumulated timer values of the steps so far.
 
-void st_wake_up() {
+void st_wake_up()
+{
   //  TCNT1 = 0;
   ENABLE_STEPPER_DRIVER_INTERRUPT();
 }
 
-void step_wait(){
-    for(int8_t i=0; i < 6; i++){
-    }
-}
 
-
-FORCE_INLINE uint16_t calc_timer(uint16_t step_rate) {
+FORCE_INLINE uint16_t calc_timer(uint16_t step_rate)
+{
   uint16_t timer;
   if(step_rate > MAX_STEP_FREQUENCY) step_rate = MAX_STEP_FREQUENCY;
 
-  if(step_rate > 20000) { // If steprate > 20kHz >> step 4 times
+  if(step_rate > 20000)
+  {
+    // If steprate > 20kHz >> step 4 times
     step_rate = (step_rate >> 2)&0x3fff;
     step_loops = 4;
   }
-  else if(step_rate > 10000) { // If steprate > 10kHz >> step 2 times
+  else if(step_rate > 10000)
+  {
+    // If steprate > 10kHz >> step 2 times
     step_rate = (step_rate >> 1)&0x7fff;
     step_loops = 2;
   }
-  else {
+  else
+  {
     step_loops = 1;
   }
 
   if(step_rate < (F_CPU/500000)) step_rate = (F_CPU/500000);
   step_rate -= (F_CPU/500000); // Correct for minimal speed
-  if(step_rate >= (8*256)){ // higher step rate
+  if(step_rate >= (8*256))
+  { // higher step rate
     const uint8_t* table_address = (const uint8_t*)&speed_lookuptable_fast[(unsigned char)(step_rate>>8)][0];
     const uint8_t tmp_step_rate = (step_rate & 0x00ff);
     uint16_t gain = (uint16_t)pgm_read_word_near(table_address+2);
     MultiU16X8toH16(timer, tmp_step_rate, gain);
     timer = (uint16_t)pgm_read_word_near(table_address) - timer;
   }
-  else { // lower step rates
+  else
+  { // lower step rates
     const uint8_t* table_address = (const uint8_t*)&speed_lookuptable_slow[0][0];
     table_address += ((step_rate)>>1) & 0xfffc;
     timer = (uint16_t)pgm_read_word_near(table_address);
@@ -318,7 +322,8 @@ FORCE_INLINE uint16_t calc_timer(uint16_t step_rate) {
 
 // Initializes the trapezoid generator from the current block. Called whenever a new
 // block begins.
-FORCE_INLINE void trapezoid_generator_reset() {
+FORCE_INLINE void trapezoid_generator_reset()
+{
   #ifdef ADVANCE
     advance = current_block->initial_advance;
     final_advance = current_block->final_advance;
@@ -356,10 +361,12 @@ FORCE_INLINE void trapezoid_generator_reset() {
 ISR(TIMER1_COMPA_vect)
 {
   // If there is no current block, attempt to pop one from the buffer
-  if (current_block == NULL) {
+  if (current_block == NULL)
+  {
     // Anything in the buffer?
     current_block = plan_get_current_block();
-    if (current_block != NULL) {
+    if (current_block != NULL)
+    {
       trapezoid_generator_reset();
 
       // Initialize Bresenham counters to 1/2 the ceiling
@@ -373,23 +380,28 @@ ISR(TIMER1_COMPA_vect)
       out_bits = current_block->direction_bits;
 
       // Set the direction bits (X_AXIS=A_AXIS and Y_AXIS=B_AXIS for COREXY)
-      if((out_bits & (1<<X_AXIS))!=0){
+      if((out_bits & (1<<X_AXIS))!=0)
+      {
         WRITE(X_DIR_PIN, INVERT_X_DIR);
         count_direction[X_AXIS]=-1;
       }
-      else{
+      else
+      {
         WRITE(X_DIR_PIN, !INVERT_X_DIR);
         count_direction[X_AXIS]=1;
       }
-      if((out_bits & (1<<Y_AXIS))!=0){
+      if((out_bits & (1<<Y_AXIS))!=0)
+      {
         WRITE(Y_DIR_PIN, INVERT_Y_DIR);
         count_direction[Y_AXIS]=-1;
       }
-      else{
+      else
+      {
         WRITE(Y_DIR_PIN, !INVERT_Y_DIR);
         count_direction[Y_AXIS]=1;
       }
-      if ((out_bits & (1<<Z_AXIS)) != 0) {   // -direction
+      if ((out_bits & (1<<Z_AXIS)) != 0)
+      {   // -direction
         WRITE(Z_DIR_PIN, INVERT_Z_DIR);
 
 	    #ifdef Z_DUAL_STEPPER_DRIVERS
@@ -398,7 +410,8 @@ ISR(TIMER1_COMPA_vect)
 
         count_direction[Z_AXIS]=-1;
       }
-      else {
+      else
+      {
         WRITE(Z_DIR_PIN, !INVERT_Z_DIR);
 
 	    #ifdef Z_DUAL_STEPPER_DRIVERS
@@ -408,11 +421,13 @@ ISR(TIMER1_COMPA_vect)
         count_direction[Z_AXIS]=1;
       }
     #ifndef ADVANCE
-      if ((out_bits & (1<<E_AXIS)) != 0) {  // -direction
+      if ((out_bits & (1<<E_AXIS)) != 0)
+      {  // -direction
         REV_E_DIR();
         count_direction[E_AXIS]=-1;
       }
-      else { // +direction
+      else
+      { // +direction
         NORM_E_DIR();
         count_direction[E_AXIS]=1;
       }
@@ -495,18 +510,21 @@ ISR(TIMER1_COMPA_vect)
       }
 
     #ifdef Z_LATE_ENABLE
-      if(current_block->steps_z > 0) {
+      if(current_block->steps_z > 0)
+      {
         enable_z();
         OCR1A = 2000; //1ms wait
         bReturn = true;
       }
-      if (bReturn) {
+      if (bReturn)
+      {
         return;
       }
     #endif
 #else
       #ifdef Z_LATE_ENABLE
-        if(current_block->steps_z > 0) {
+        if(current_block->steps_z > 0)
+        {
           enable_z();
           OCR1A = 2000; //1ms wait
           return;
@@ -518,23 +536,28 @@ ISR(TIMER1_COMPA_vect)
 //      e_steps[current_block->active_extruder] = 0;
 //      #endif
     }
-    else {
+    else
+    {
         OCR1A=2000; // 1kHz.
     }
   }
 
-  if (current_block != NULL) {
+  if (current_block != NULL)
+  {
     // Set direction en check limit switches
     #ifndef COREXY
-    if ((out_bits & (1<<X_AXIS)) != 0) {   // stepping along -X axis
+    if ((out_bits & (1<<X_AXIS)) != 0)
+    {   // stepping along -X axis
     #else
-    if ((((out_bits & (1<<X_AXIS)) != 0)&&(out_bits & (1<<Y_AXIS)) != 0)) {   //-X occurs for -A and -B
+    if ((((out_bits & (1<<X_AXIS)) != 0)&&(out_bits & (1<<Y_AXIS)) != 0))
+    {   //-X occurs for -A and -B
     #endif
       CHECK_ENDSTOPS
       {
         #if defined(X_MIN_PIN) && X_MIN_PIN > -1
           bool x_min_endstop=(READ(X_MIN_PIN) != X_ENDSTOPS_INVERTING);
-          if(x_min_endstop && old_x_min_endstop && (current_block->steps_x > 0)) {
+          if(x_min_endstop && old_x_min_endstop && (current_block->steps_x > 0))
+          {
             endstops_trigsteps[X_AXIS] = count_position[X_AXIS];
             endstop_x_hit=true;
             step_events_completed = current_block->step_event_count;
@@ -543,12 +566,14 @@ ISR(TIMER1_COMPA_vect)
         #endif
       }
     }
-    else { // +direction
+    else
+    { // +direction
       CHECK_ENDSTOPS
       {
         #if defined(X_MAX_PIN) && X_MAX_PIN > -1
           bool x_max_endstop=(READ(X_MAX_PIN) != X_ENDSTOPS_INVERTING);
-          if(x_max_endstop && old_x_max_endstop && (current_block->steps_x > 0)){
+          if(x_max_endstop && old_x_max_endstop && (current_block->steps_x > 0))
+          {
             endstops_trigsteps[X_AXIS] = count_position[X_AXIS];
             endstop_x_hit=true;
             step_events_completed = current_block->step_event_count;
@@ -559,15 +584,18 @@ ISR(TIMER1_COMPA_vect)
     }
 
     #ifndef COREXY
-    if ((out_bits & (1<<Y_AXIS)) != 0) {   // -direction
+    if ((out_bits & (1<<Y_AXIS)) != 0)
+    {   // -direction
     #else
-    if ((((out_bits & (1<<X_AXIS)) != 0)&&(out_bits & (1<<Y_AXIS)) == 0)) {   // -Y occurs for -A and +B
+    if ((((out_bits & (1<<X_AXIS)) != 0)&&(out_bits & (1<<Y_AXIS)) == 0))
+    {   // -Y occurs for -A and +B
     #endif
       CHECK_ENDSTOPS
       {
         #if defined(Y_MIN_PIN) && Y_MIN_PIN > -1
           bool y_min_endstop=(READ(Y_MIN_PIN) != Y_ENDSTOPS_INVERTING);
-          if(y_min_endstop && old_y_min_endstop && (current_block->steps_y > 0)) {
+          if(y_min_endstop && old_y_min_endstop && (current_block->steps_y > 0))
+          {
             endstops_trigsteps[Y_AXIS] = count_position[Y_AXIS];
             endstop_y_hit=true;
             step_events_completed = current_block->step_event_count;
@@ -576,12 +604,14 @@ ISR(TIMER1_COMPA_vect)
         #endif
       }
     }
-    else { // +direction
+    else
+    { // +direction
       CHECK_ENDSTOPS
       {
         #if defined(Y_MAX_PIN) && Y_MAX_PIN > -1
           bool y_max_endstop=(READ(Y_MAX_PIN) != Y_ENDSTOPS_INVERTING);
-          if(y_max_endstop && old_y_max_endstop && (current_block->steps_y > 0)){
+          if(y_max_endstop && old_y_max_endstop && (current_block->steps_y > 0))
+          {
             endstops_trigsteps[Y_AXIS] = count_position[Y_AXIS];
             endstop_y_hit=true;
             step_events_completed = current_block->step_event_count;
@@ -591,12 +621,14 @@ ISR(TIMER1_COMPA_vect)
       }
     }
 
-    if ((out_bits & (1<<Z_AXIS)) != 0) {   // -direction
+    if ((out_bits & (1<<Z_AXIS)) != 0)
+    {   // -direction
       CHECK_ENDSTOPS
       {
         #if defined(Z_MIN_PIN) && Z_MIN_PIN > -1
           bool z_min_endstop=(READ(Z_MIN_PIN) != Z_ENDSTOPS_INVERTING);
-          if(z_min_endstop && old_z_min_endstop && (current_block->steps_z > 0)) {
+          if(z_min_endstop && old_z_min_endstop && (current_block->steps_z > 0))
+          {
             endstops_trigsteps[Z_AXIS] = count_position[Z_AXIS];
             endstop_z_hit=true;
             step_events_completed = current_block->step_event_count;
@@ -605,12 +637,14 @@ ISR(TIMER1_COMPA_vect)
         #endif
       }
     }
-    else { // +direction
+    else
+    { // +direction
       CHECK_ENDSTOPS
       {
         #if defined(Z_MAX_PIN) && Z_MAX_PIN > -1
           bool z_max_endstop=(READ(Z_MAX_PIN) != Z_ENDSTOPS_INVERTING);
-          if(z_max_endstop && old_z_max_endstop && (current_block->steps_z > 0)) {
+          if(z_max_endstop && old_z_max_endstop && (current_block->steps_z > 0))
+          {
             endstops_trigsteps[Z_AXIS] = count_position[Z_AXIS];
             endstop_z_hit=true;
             step_events_completed = current_block->step_event_count;
@@ -620,7 +654,8 @@ ISR(TIMER1_COMPA_vect)
       }
     }
 
-    for(int8_t i=0; i < step_loops; i++) { // Take multiple steps per interrupt (For high speed moves)
+    for(int8_t i=0; i < step_loops; i++)
+    { // Take multiple steps per interrupt (For high speed moves)
       #ifndef AT90USB
       MSerial.checkRx(); // Check for serial chars.
       #endif
@@ -629,17 +664,20 @@ ISR(TIMER1_COMPA_vect)
       counter_e += current_block->steps_e;
       if (counter_e > 0) {
         counter_e -= current_block->step_event_count;
-        if ((out_bits & (1<<E_AXIS)) != 0) { // - direction
+        if ((out_bits & (1<<E_AXIS)) != 0)
+        { // - direction
           e_steps[current_block->active_extruder]--;
         }
-        else {
+        else
+        {
           e_steps[current_block->active_extruder]++;
         }
       }
       #endif //ADVANCE
 
         counter_x += current_block->steps_x;
-        if (counter_x > 0) {
+        if (counter_x > 0)
+        {
           WRITE(X_STEP_PIN, !INVERT_X_STEP_PIN);
           counter_x -= current_block->step_event_count;
           count_position[X_AXIS]+=count_direction[X_AXIS];
@@ -647,7 +685,8 @@ ISR(TIMER1_COMPA_vect)
         }
 
         counter_y += current_block->steps_y;
-        if (counter_y > 0) {
+        if (counter_y > 0)
+        {
           WRITE(Y_STEP_PIN, !INVERT_Y_STEP_PIN);
           counter_y -= current_block->step_event_count;
           count_position[Y_AXIS]+=count_direction[Y_AXIS];
@@ -655,7 +694,8 @@ ISR(TIMER1_COMPA_vect)
         }
 
       counter_z += current_block->steps_z;
-      if (counter_z > 0) {
+      if (counter_z > 0)
+      {
         WRITE(Z_STEP_PIN, !INVERT_Z_STEP_PIN);
 
 		#ifdef Z_DUAL_STEPPER_DRIVERS
@@ -673,7 +713,8 @@ ISR(TIMER1_COMPA_vect)
 
       #ifndef ADVANCE
         counter_e += current_block->steps_e;
-        if (counter_e > 0) {
+        if (counter_e > 0)
+        {
           WRITE_E_STEP(!INVERT_E_STEP_PIN);
           counter_e -= current_block->step_event_count;
           count_position[E_AXIS]+=count_direction[E_AXIS];
@@ -684,7 +725,8 @@ ISR(TIMER1_COMPA_vect)
       if(step_events_completed >= current_block->step_event_count) break;
     }
     // Calculate new timer value
-    if (step_events_completed <= (uint32_t)current_block->accelerate_until) {
+    if (step_events_completed <= (uint32_t)current_block->accelerate_until)
+    {
 
       MultiU24X32toH16(acc_step_rate, acceleration_time, current_block->acceleration_rate);
       acc_step_rate += current_block->initial_rate;
@@ -698,7 +740,8 @@ ISR(TIMER1_COMPA_vect)
       OCR1A = timer;
       acceleration_time += timer;
       #ifdef ADVANCE
-        for(int8_t i=0; i < step_loops; i++) {
+        for(uint8_t i=0; i < step_loops; ++i)
+        {
           advance += advance_rate;
         }
         //if(advance > current_block->advance) advance = current_block->advance;
@@ -708,14 +751,17 @@ ISR(TIMER1_COMPA_vect)
 
       #endif
     }
-    else if (step_events_completed > (uint32_t)current_block->decelerate_after) {
+    else if (step_events_completed > (uint32_t)current_block->decelerate_after)
+    {
       uint16_t step_rate;
       MultiU24X32toH16(step_rate, deceleration_time, current_block->acceleration_rate);
 
-      if (step_rate < acc_step_rate) { // Still decelerating?
+      if (step_rate < acc_step_rate)
+      { // Still decelerating?
         step_rate = max(uint16_t(acc_step_rate - step_rate), current_block->final_rate);
       }
-      else {
+      else
+      {
         step_rate = current_block->final_rate;  // lower limit
       }
 
@@ -724,16 +770,21 @@ ISR(TIMER1_COMPA_vect)
       OCR1A = timer;
       deceleration_time += timer;
       #ifdef ADVANCE
-        for(int8_t i=0; i < step_loops; i++) {
+        for(int8_t i=0; i < step_loops; i++)
+        {
           advance -= advance_rate;
         }
-        if(advance < final_advance) advance = final_advance;
+        if(advance < final_advance)
+        {
+          advance = final_advance;
+        }
         // Do E steps + advance steps
         e_steps[current_block->active_extruder] += ((advance >>8) - old_advance);
         old_advance = advance >>8;
       #endif //ADVANCE
     }
-    else {
+    else
+    {
       OCR1A = OCR1A_nominal;
       // ensure we're running at the correct step rate, even if we just came off an acceleration
       step_loops = step_loops_nominal;
@@ -766,29 +817,36 @@ ISR(TIMER1_COMPA_vect)
     old_OCR0A += 52; // ~10kHz interrupt (250000 / 26 = 9615kHz)
     OCR0A = old_OCR0A;
     // Set E direction (Depends on E direction + advance)
-    for(unsigned char i=0; i<4;i++) {
-      if (e_steps[0] != 0) {
+    for(unsigned char i=0; i<4;i++)
+    {
+      if (e_steps[0] != 0)
+      {
         WRITE(E0_STEP_PIN, INVERT_E_STEP_PIN);
-        if (e_steps[0] < 0) {
+        if (e_steps[0] < 0)
+        {
           WRITE(E0_DIR_PIN, INVERT_E0_DIR);
           e_steps[0]++;
           WRITE(E0_STEP_PIN, !INVERT_E_STEP_PIN);
         }
-        else if (e_steps[0] > 0) {
+        else if (e_steps[0] > 0)
+        {
           WRITE(E0_DIR_PIN, !INVERT_E0_DIR);
           e_steps[0]--;
           WRITE(E0_STEP_PIN, !INVERT_E_STEP_PIN);
         }
       }
  #if EXTRUDERS > 1
-      if (e_steps[1] != 0) {
+      if (e_steps[1] != 0)
+      {
         WRITE(E1_STEP_PIN, INVERT_E_STEP_PIN);
-        if (e_steps[1] < 0) {
+        if (e_steps[1] < 0)
+        {
           WRITE(E1_DIR_PIN, INVERT_E1_DIR);
           e_steps[1]++;
           WRITE(E1_STEP_PIN, !INVERT_E_STEP_PIN);
         }
-        else if (e_steps[1] > 0) {
+        else if (e_steps[1] > 0)
+        {
           WRITE(E1_DIR_PIN, !INVERT_E1_DIR);
           e_steps[1]--;
           WRITE(E1_STEP_PIN, !INVERT_E_STEP_PIN);
@@ -796,14 +854,17 @@ ISR(TIMER1_COMPA_vect)
       }
  #endif
  #if EXTRUDERS > 2
-      if (e_steps[2] != 0) {
+      if (e_steps[2] != 0)
+      {
         WRITE(E2_STEP_PIN, INVERT_E_STEP_PIN);
-        if (e_steps[2] < 0) {
+        if (e_steps[2] < 0)
+        {
           WRITE(E2_DIR_PIN, INVERT_E2_DIR);
           e_steps[2]++;
           WRITE(E2_STEP_PIN, !INVERT_E_STEP_PIN);
         }
-        else if (e_steps[2] > 0) {
+        else if (e_steps[2] > 0)
+        {
           WRITE(E2_DIR_PIN, !INVERT_E2_DIR);
           e_steps[2]--;
           WRITE(E2_STEP_PIN, !INVERT_E_STEP_PIN);

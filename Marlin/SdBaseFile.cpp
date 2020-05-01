@@ -1011,7 +1011,8 @@ void SdBaseFile::printFatTime( uint16_t fatTime) {
  * \return The value one, true, is returned for success and
  * the value zero, false, is returned for failure.
  */
-bool SdBaseFile::printName() {
+bool SdBaseFile::printName()
+{
   char name[FILENAME_LENGTH];
   if (!getFilename(name)) return false;
   MYSERIAL.print(name);
@@ -1023,7 +1024,8 @@ bool SdBaseFile::printName() {
  * \return For success read returns the next byte in the file as an int.
  * If an error occurs or end of file is reached -1 is returned.
  */
-int16_t SdBaseFile::read() {
+int16_t SdBaseFile::read()
+{
   uint8_t b;
   return read(&b, 1) == 1 ? b : -1;
 }
@@ -1041,7 +1043,8 @@ int16_t SdBaseFile::read() {
  * read() called before a file has been opened, corrupt file system
  * or an I/O error occurred.
  */
-int16_t SdBaseFile::read(void* buf, uint16_t nbyte) {
+int16_t SdBaseFile::read(void* buf, uint16_t nbyte)
+{
   uint8_t* dst = reinterpret_cast<uint8_t*>(buf);
   uint16_t offset;
   uint16_t toRead;
@@ -1056,20 +1059,28 @@ int16_t SdBaseFile::read(void* buf, uint16_t nbyte) {
   }
   // amount left to read
   toRead = nbyte;
-  while (toRead > 0) {
+  while (toRead > 0)
+  {
     offset = curPosition_ & 0X1FF;  // offset in block
     if (type_ == FAT_FILE_TYPE_ROOT_FIXED) {
       block = vol_->rootDirStart() + (curPosition_ >> 9);
     } else {
       uint8_t blockOfCluster = vol_->blockOfCluster(curPosition_);
-      if (offset == 0 && blockOfCluster == 0) {
+      if (offset == 0 && blockOfCluster == 0)
+      {
         // start of new cluster
-        if (curPosition_ == 0) {
+        if (curPosition_ == 0)
+        {
           // use first cluster in file
           curCluster_ = firstCluster_;
-        } else {
+        }
+        else
+        {
           // get next cluster from FAT
-          if (!vol_->fatGet(curCluster_, &curCluster_)) goto fail;
+          if (!vol_->fatGet(curCluster_, &curCluster_))
+          {
+            goto fail;
+          }
         }
       }
       block = vol_->clusterStartBlock(curCluster_) + blockOfCluster;
@@ -1080,11 +1091,20 @@ int16_t SdBaseFile::read(void* buf, uint16_t nbyte) {
     if (n > (512 - offset)) n = 512 - offset;
 
     // no buffering needed if n == 512
-    if (n == 512 && block != vol_->cacheBlockNumber()) {
-      if (!vol_->readBlock(block, dst)) goto fail;
-    } else {
+    if (n == 512 && block != vol_->cacheBlockNumber())
+    {
+      if (!vol_->readBlock(block, dst))
+      {
+        goto fail;
+      }
+    }
+    else
+    {
       // read block to cache and copy data to caller
-      if (!vol_->cacheRawBlock(block, SdVolume::CACHE_FOR_READ)) goto fail;
+      if (!vol_->cacheRawBlock(block, SdVolume::CACHE_FOR_READ))
+      {
+        goto fail;
+      }
       uint8_t* src = vol_->cache()->data + offset;
       memcpy(dst, src, n);
     }
@@ -1108,7 +1128,8 @@ int16_t SdBaseFile::read(void* buf, uint16_t nbyte) {
  * readDir() called before a directory has been opened, this is not
  * a directory file or an I/O error occurred.
  */
-int8_t SdBaseFile::readDir(dir_t* dir, char* longFilename) {
+int8_t SdBaseFile::readDir(dir_t* dir, char* longFilename)
+{
   int16_t n;
   // if not a directory file or miss-positioned return an error
   if (!isDir() || (0X1F & curPosition_)) return -1;
@@ -1161,7 +1182,8 @@ int8_t SdBaseFile::readDir(dir_t* dir, char* longFilename) {
 //------------------------------------------------------------------------------
 // Read next directory entry into the cache
 // Assumes file is correctly positioned
-dir_t* SdBaseFile::readDirCache() {
+dir_t* SdBaseFile::readDirCache()
+{
   uint8_t i;
   // error if not directory
   if (!isDir()) goto fail;
@@ -1195,7 +1217,8 @@ dir_t* SdBaseFile::readDirCache() {
  * Reasons for failure include the file read-only, is a directory,
  * or an I/O error occurred.
  */
-bool SdBaseFile::remove() {
+bool SdBaseFile::remove()
+{
   dir_t* d;
   // free any clusters - will fail if read-only or directory
   if (!truncate(0)) goto fail;
@@ -1235,7 +1258,8 @@ bool SdBaseFile::remove() {
  * \a dirFile is not a directory, \a path is not found
  * or an I/O error occurred.
  */
-bool SdBaseFile::remove(SdBaseFile* dirFile, const char* path) {
+bool SdBaseFile::remove(SdBaseFile* dirFile, const char* path)
+{
   SdBaseFile file;
   if (!file.open(dirFile, path, O_WRITE)) goto fail;
   return file.remove();
@@ -1255,7 +1279,8 @@ bool SdBaseFile::remove(SdBaseFile* dirFile, const char* path) {
  * Reasons for failure include \a dirFile is not open or is not a directory
  * file, newPath is invalid or already exists, or an I/O error occurs.
  */
-bool SdBaseFile::rename(SdBaseFile* dirFile, const char* newPath) {
+bool SdBaseFile::rename(SdBaseFile* dirFile, const char* newPath)
+{
   dir_t entry;
   uint32_t dirCluster = 0;
   SdBaseFile file;
@@ -1279,13 +1304,18 @@ bool SdBaseFile::rename(SdBaseFile* dirFile, const char* newPath) {
   d->name[0] = DIR_NAME_DELETED;
 
   // make directory entry for new path
-  if (isFile()) {
-    if (!file.open(dirFile, newPath, O_CREAT | O_EXCL | O_WRITE)) {
+  if (isFile())
+  {
+    if (!file.open(dirFile, newPath, O_CREAT | O_EXCL | O_WRITE))
+    {
       goto restore;
     }
-  } else {
+  }
+  else
+  {
     // don't create missing path prefix components
-    if (!file.mkdir(dirFile, newPath, false)) {
+    if (!file.mkdir(dirFile, newPath, false))
+    {
       goto restore;
     }
     // save cluster containing new dot dot
@@ -1306,7 +1336,8 @@ bool SdBaseFile::rename(SdBaseFile* dirFile, const char* newPath) {
   memcpy(&d->attributes, &entry.attributes, sizeof(entry) - sizeof(d->name));
 
   // update dot dot if directory
-  if (dirCluster) {
+  if (dirCluster)
+  {
     // get new dot dot
     uint32_t block = vol_->clusterStartBlock(dirCluster);
     if (!vol_->cacheRawBlock(block, SdVolume::CACHE_FOR_READ)) goto fail;
@@ -1348,14 +1379,16 @@ bool SdBaseFile::rename(SdBaseFile* dirFile, const char* newPath) {
  * Reasons for failure include the file is not a directory, is the root
  * directory, is not empty, or an I/O error occurred.
  */
-bool SdBaseFile::rmdir() {
+bool SdBaseFile::rmdir()
+{
   // must be open subdirectory
   if (!isSubDir()) goto fail;
 
   rewind();
 
   // make sure directory is empty
-  while (curPosition_ < fileSize_) {
+  while (curPosition_ < fileSize_)
+  {
     dir_t* p = readDirCache();
     if (!p) goto fail;
     // done if past last used entry
@@ -1389,11 +1422,13 @@ bool SdBaseFile::rmdir() {
  * \return The value one, true, is returned for success and
  * the value zero, false, is returned for failure.
  */
-bool SdBaseFile::rmRfStar() {
+bool SdBaseFile::rmRfStar()
+{
   uint16_t index;
   SdBaseFile f;
   rewind();
-  while (curPosition_ < fileSize_) {
+  while (curPosition_ < fileSize_)
+  {
     // remember position
     index = curPosition_/32;
 
@@ -1410,21 +1445,26 @@ bool SdBaseFile::rmRfStar() {
     if (!DIR_IS_FILE_OR_SUBDIR(p)) continue;
 
     if (!f.open(this, index, O_READ)) goto fail;
-    if (f.isSubDir()) {
+    if (f.isSubDir())
+    {
       // recursively delete
       if (!f.rmRfStar()) goto fail;
-    } else {
+    }
+    else
+    {
       // ignore read-only
       f.flags_ |= O_WRITE;
       if (!f.remove()) goto fail;
     }
     // position to next entry if required
-    if (curPosition_ != (32u*(index + 1u))) {
+    if (curPosition_ != (32u*(index + 1u)))
+    {
       if (!seekSet(32u*(index + 1u))) goto fail;
     }
   }
   // don't try to delete root
-  if (!isRoot()) {
+  if (!isRoot())
+  {
     if (!rmdir()) goto fail;
   }
   return true;
@@ -1440,7 +1480,8 @@ bool SdBaseFile::rmRfStar() {
  * \param[in] oflag Values for \a oflag are constructed by a bitwise-inclusive
  * OR of open flags. see SdBaseFile::open(SdBaseFile*, const char*, uint8_t).
  */
-SdBaseFile::SdBaseFile(const char* path, uint8_t oflag) {
+SdBaseFile::SdBaseFile(const char* path, uint8_t oflag)
+{
   type_ = FAT_FILE_TYPE_CLOSED;
   writeError = false;
   open(path, oflag);
@@ -1453,17 +1494,20 @@ SdBaseFile::SdBaseFile(const char* path, uint8_t oflag) {
  * \return The value one, true, is returned for success and
  * the value zero, false, is returned for failure.
  */
-bool SdBaseFile::seekSet(uint32_t pos) {
+bool SdBaseFile::seekSet(uint32_t pos)
+{
   uint32_t nCur;
   uint32_t nNew;
   // error if file not open or seek past end of file
   if (!isOpen() || pos > fileSize_) goto fail;
 
-  if (type_ == FAT_FILE_TYPE_ROOT_FIXED) {
+  if (type_ == FAT_FILE_TYPE_ROOT_FIXED)
+  {
     curPosition_ = pos;
     goto done;
   }
-  if (pos == 0) {
+  if (pos == 0)
+  {
     // set position to start of file
     curCluster_ = 0;
     curPosition_ = 0;
@@ -1473,14 +1517,18 @@ bool SdBaseFile::seekSet(uint32_t pos) {
   nCur = (curPosition_ - 1) >> (vol_->clusterSizeShift_ + 9);
   nNew = (pos - 1) >> (vol_->clusterSizeShift_ + 9);
 
-  if (nNew < nCur || curPosition_ == 0) {
+  if (nNew < nCur || curPosition_ == 0)
+  {
     // must follow chain from first cluster
     curCluster_ = firstCluster_;
-  } else {
+  }
+  else
+  {
     // advance from curPosition
     nNew -= nCur;
   }
-  while (nNew--) {
+  while (nNew--)
+  {
     if (!vol_->fatGet(curCluster_, &curCluster_)) goto fail;
   }
   curPosition_ = pos;
@@ -1492,7 +1540,8 @@ bool SdBaseFile::seekSet(uint32_t pos) {
   return false;
 }
 //------------------------------------------------------------------------------
-void SdBaseFile::setpos(sd_fpos_t* pos) {
+void SdBaseFile::setpos(sd_fpos_t* pos)
+{
   curPosition_ = pos->position;
   curCluster_ = pos->cluster;
 }
@@ -1505,11 +1554,13 @@ void SdBaseFile::setpos(sd_fpos_t* pos) {
  * Reasons for failure include a call to sync() before a file has been
  * opened or an I/O error.
  */
-bool SdBaseFile::sync() {
+bool SdBaseFile::sync()
+{
   // only allow open files and directories
   if (!isOpen()) goto fail;
 
-  if (flags_ & F_FILE_DIR_DIRTY) {
+  if (flags_ & F_FILE_DIR_DIRTY)
+  {
     dir_t* d = cacheDirEntry(SdVolume::CACHE_FOR_WRITE);
     // check for deleted by another open file object
     if (!d || d->name[0] == DIR_NAME_DELETED) goto fail;
@@ -1522,7 +1573,8 @@ bool SdBaseFile::sync() {
     d->firstClusterHigh = firstCluster_ >> 16;
 
     // set modify time if user supplied a callback date/time function
-    if (dateTime_) {
+    if (dateTime_)
+    {
       dateTime_(&d->lastWriteDate, &d->lastWriteTime);
       d->lastAccessDate = d->lastWriteDate;
     }
@@ -1547,7 +1599,8 @@ bool SdBaseFile::sync() {
  * \return The value one, true, is returned for success and
  * the value zero, false, is returned for failure.
  */
-bool SdBaseFile::timestamp(SdBaseFile* file) {
+bool SdBaseFile::timestamp(SdBaseFile* file)
+{
   dir_t* d;
   dir_t dir;
 
@@ -1609,7 +1662,8 @@ bool SdBaseFile::timestamp(SdBaseFile* file) {
  * the value zero, false, is returned for failure.
  */
 bool SdBaseFile::timestamp(uint8_t flags, uint16_t year, uint8_t month,
-         uint8_t day, uint8_t hour, uint8_t minute, uint8_t second) {
+         uint8_t day, uint8_t hour, uint8_t minute, uint8_t second)
+{
   uint16_t dirDate;
   uint16_t dirTime;
   dir_t* d;
@@ -1623,7 +1677,8 @@ bool SdBaseFile::timestamp(uint8_t flags, uint16_t year, uint8_t month,
     || day > 31
     || hour > 23
     || minute > 59
-    || second > 59) {
+    || second > 59)
+  {
       goto fail;
   }
   // update directory entry
@@ -1637,13 +1692,15 @@ bool SdBaseFile::timestamp(uint8_t flags, uint16_t year, uint8_t month,
   if (flags & T_ACCESS) {
     d->lastAccessDate = dirDate;
   }
-  if (flags & T_CREATE) {
+  if (flags & T_CREATE)
+  {
     d->creationDate = dirDate;
     d->creationTime = dirTime;
     // seems to be units of 1/100 second not 1/10 as Microsoft states
     d->creationTimeTenths = second & 1 ? 100 : 0;
   }
-  if (flags & T_WRITE) {
+  if (flags & T_WRITE)
+  {
     d->lastWriteDate = dirDate;
     d->lastWriteTime = dirTime;
   }
@@ -1664,7 +1721,8 @@ bool SdBaseFile::timestamp(uint8_t flags, uint16_t year, uint8_t month,
  * Reasons for failure include file is read only, file is a directory,
  * \a length is greater than the current file size or an I/O error occurs.
  */
-bool SdBaseFile::truncate(uint32_t length) {
+bool SdBaseFile::truncate(uint32_t length)
+{
   uint32_t newPos;
   // error if not a normal file or read-only
   if (!isFile() || !(flags_ & O_WRITE)) goto fail;
@@ -1726,7 +1784,8 @@ bool SdBaseFile::truncate(uint32_t length) {
  * for a read-only file, device is full, a corrupt file system or an I/O error.
  *
  */
-int16_t SdBaseFile::write(const void* buf, uint16_t nbyte) {
+int16_t SdBaseFile::write(const void* buf, uint16_t nbyte)
+{
   // convert void* to uint8_t*  -  must be before goto statements
   const uint8_t* src = reinterpret_cast<const uint8_t*>(buf);
 
@@ -1737,29 +1796,41 @@ int16_t SdBaseFile::write(const void* buf, uint16_t nbyte) {
   if (!isFile() || !(flags_ & O_WRITE)) goto fail;
 
   // seek to end of file if append flag
-  if ((flags_ & O_APPEND) && curPosition_ != fileSize_) {
+  if ((flags_ & O_APPEND) && curPosition_ != fileSize_)
+  {
     if (!seekEnd()) goto fail;
   }
 
-  while (nToWrite > 0) {
+  while (nToWrite > 0)
+  {
     uint8_t blockOfCluster = vol_->blockOfCluster(curPosition_);
     uint16_t blockOffset = curPosition_ & 0X1FF;
-    if (blockOfCluster == 0 && blockOffset == 0) {
+    if (blockOfCluster == 0 && blockOffset == 0)
+    {
       // start of new cluster
-      if (curCluster_ == 0) {
-        if (firstCluster_ == 0) {
+      if (curCluster_ == 0)
+      {
+        if (firstCluster_ == 0)
+        {
           // allocate first cluster of file
           if (!addCluster()) goto fail;
-        } else {
+        }
+        else
+        {
           curCluster_ = firstCluster_;
         }
-      } else {
+      }
+      else
+      {
         uint32_t next;
         if (!vol_->fatGet(curCluster_, &next)) goto fail;
-        if (vol_->isEOC(next)) {
+        if (vol_->isEOC(next))
+        {
           // add cluster if at end of chain
           if (!addCluster()) goto fail;
-        } else {
+        }
+        else
+        {
           curCluster_ = next;
         }
       }
@@ -1772,20 +1843,26 @@ int16_t SdBaseFile::write(const void* buf, uint16_t nbyte) {
 
     // block for data write
     uint32_t block = vol_->clusterStartBlock(curCluster_) + blockOfCluster;
-    if (n == 512) {
+    if (n == 512)
+    {
       // full block - don't need to use cache
       if (vol_->cacheBlockNumber() == block) {
         // invalidate cache if block is in cache
         vol_->cacheSetBlockNumber(0XFFFFFFFF, false);
       }
       if (!vol_->writeBlock(block, src)) goto fail;
-    } else {
-      if (blockOffset == 0 && curPosition_ >= fileSize_) {
+    }
+    else
+    {
+      if (blockOffset == 0 && curPosition_ >= fileSize_)
+      {
         // start of new block don't need to read into cache
         if (!vol_->cacheFlush()) goto fail;
         // set cache dirty and SD address of block
         vol_->cacheSetBlockNumber(block, true);
-      } else {
+      }
+      else
+      {
         // rewrite part of block
         if (!vol_->cacheRawBlock(block, SdVolume::CACHE_FOR_WRITE)) goto fail;
       }
@@ -1796,16 +1873,20 @@ int16_t SdBaseFile::write(const void* buf, uint16_t nbyte) {
     src += n;
     nToWrite -= n;
   }
-  if (curPosition_ > fileSize_) {
+  if (curPosition_ > fileSize_)
+  {
     // update fileSize and insure sync will update dir entry
     fileSize_ = curPosition_;
     flags_ |= F_FILE_DIR_DIRTY;
-  } else if (dateTime_ && nbyte) {
+  }
+  else if (dateTime_ && nbyte)
+  {
     // insure sync will update modified date and time
     flags_ |= F_FILE_DIR_DIRTY;
   }
 
-  if (flags_ & O_SYNC) {
+  if (flags_ & O_SYNC)
+  {
     if (!sync()) goto fail;
   }
   return nbyte;
