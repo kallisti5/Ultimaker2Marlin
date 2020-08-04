@@ -1547,7 +1547,8 @@ void process_command(const char *strCmd, bool sendAck)
       if (codenum > 0)
       {
         codenum += millis();  // keep track of when we started waiting
-        while(millis()  < codenum && !lcd_clicked()){
+        while(millis()  < codenum && !lcd_clicked())
+        {
           idle();
         }
       }
@@ -2679,7 +2680,7 @@ void process_command(const char *strCmd, bool sendAck)
         uint8_t cnt=0;
         while(!lcd_clicked())
         {
-          cnt++;
+          ++cnt;
           idle();
           if(cnt==0)
           {
@@ -3466,7 +3467,7 @@ void idle()
     lifetime_stats_tick();
 
     // detect serial communication
-    if (commands_queued() && serialCmd)
+    if ((commands_queued() && serialCmd) || (HAS_SERIAL_CMD && (busy_state == PAUSED_FOR_USER)))
     {
         sleep_state |= SLEEP_SERIAL_CMD;
         lastSerialCommandTime = millis();
@@ -3480,6 +3481,7 @@ void idle()
         // reset printing state
         sleep_state &= ~SLEEP_SERIAL_CMD;
         printing_state = PRINT_STATE_NORMAL;
+        lastSerialCommandTime = 0;
     }
 }
 
