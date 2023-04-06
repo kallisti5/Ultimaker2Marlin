@@ -234,7 +234,7 @@ void CardReader::openFile(const char* name,bool read)
     while(dirname_start>(char*)1)
     {
       dirname_end=strchr(dirname_start,'/');
-      if(dirname_end>0 && dirname_end>dirname_start)
+      if(dirname_end > (char*)0 && dirname_end > dirname_start)
       {
         char subdirname[13];
         strncpy(subdirname, dirname_start, dirname_end-dirname_start);
@@ -322,10 +322,10 @@ void CardReader::removeFile(const char* name)
   if(name[0]=='/')
   {
     dirname_start=strchr(name,'/')+1;
-    while(dirname_start>0)
+    while(dirname_start > (char*)0)
     {
       dirname_end=strchr(dirname_start,'/');
-      if(dirname_end>0 && dirname_end>dirname_start)
+      if(dirname_end > (char*)0 && dirname_end>dirname_start)
       {
         char subdirname[13];
         strncpy(subdirname, dirname_start, dirname_end-dirname_start);
